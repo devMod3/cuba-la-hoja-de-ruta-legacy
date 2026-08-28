@@ -1,0 +1,70 @@
+name: Bootstrap legacy repository
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/bootstrap-legacy.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout legacy target
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Import exact pre-split legacy snapshot
+        shell: bash
+        env:
+          SOURCE_SHA: db3f4d8f750f76bdb4da8650b14b891e46e508d5
+        run: |
+          set -euo pipefail
+          source_dir="$RUNNER_TEMP/cuba-la-hoja-de-ruta-source"
+          git clone --no-tags --filter=blob:none https://github.com/devMod3/cuba-la-hoja-de-ruta.git "$source_dir"
+          git -C "$source_dir" checkout --detach "$SOURCE_SHA"
+
+          rsync -a --delete \
+            --exclude='.git/' \
+            --exclude='next/' \
+            --exclude='.github/dependabot.yml' \
+            --exclude='.github/workflows/blogger-content-control-plane.yml' \
+            --exclude='.github/workflows/deploy-pages.yml' \
+            --exclude='.github/workflows/next-foundation.yml' \
+            --exclude='.github/workflows/pages-stale-guard.yml' \
+            --exclude='.github/workflows/bootstrap-legacy.yml' \
+            "$source_dir/" "$GITHUB_WORKSPACE/"
+
+          rm -f .github/workflows/bootstrap-legacy.yml
+
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('README.md')
+          original = path.read_text()
+          notice = '> **LEGACY:** repositorio independiente del proyecto anterior a la migración Next/GitHub Pages.\n\n'
+          if notice not in original:
+              path.write_text(original.replace('# La hoja de ruta — ZenBlog\n\n', '# La hoja de ruta — ZenBlog\n\n' + notice, 1))
+          PY
+
+          test ! -e next
+          test -f package.json
+          test -f blogger/theme.xml
+          test -f .github/workflows/validate.yml
+          test ! -e .github/workflows/deploy-pages.yml
+          test ! -e .github/workflows/next-foundation.yml
+          test ! -e .github/workflows/pages-stale-guard.yml
+
+      - name: Commit independent legacy tree
+        shell: bash
+        env:
+          SOURCE_SHA: db3f4d8f750f76bdb4da8650b14b891e46e508d5
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m "chore: import legacy project from ${SOURCE_SHA}"
+          git push origin HEAD:main
