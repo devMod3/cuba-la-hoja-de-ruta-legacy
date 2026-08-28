@@ -31,14 +31,8 @@ jobs:
             --exclude='.git/' \
             --exclude='next/' \
             --exclude='.github/dependabot.yml' \
-            --exclude='.github/workflows/blogger-content-control-plane.yml' \
-            --exclude='.github/workflows/deploy-pages.yml' \
-            --exclude='.github/workflows/next-foundation.yml' \
-            --exclude='.github/workflows/pages-stale-guard.yml' \
-            --exclude='.github/workflows/bootstrap-legacy.yml' \
+            --exclude='.github/workflows/***' \
             "$source_dir/" "$GITHUB_WORKSPACE/"
-
-          rm -f .github/workflows/bootstrap-legacy.yml
 
           python - <<'PY'
           from pathlib import Path
@@ -52,7 +46,8 @@ jobs:
           test ! -e next
           test -f package.json
           test -f blogger/theme.xml
-          test -f .github/workflows/validate.yml
+          test -f .github/workflows/bootstrap-legacy.yml
+          test ! -e .github/workflows/validate.yml
           test ! -e .github/workflows/deploy-pages.yml
           test ! -e .github/workflows/next-foundation.yml
           test ! -e .github/workflows/pages-stale-guard.yml
